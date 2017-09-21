@@ -1,0 +1,11 @@
+body {
+  margin: 0
+}
+
+canvas {
+  position: absolute
+}
+
+#elements {
+  background: #000000
+}
