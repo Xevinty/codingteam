@@ -6,6 +6,17 @@ var eGet = document.getElementById('elements'),
   h = hGet.getContext('2d');
 var elements = [];
 var ball = {};
+var matrix = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+];
 
 function Ball(x, y, r, vx, vy, c) {
   this.x = x;
@@ -14,10 +25,14 @@ function Ball(x, y, r, vx, vy, c) {
   this.vx = vx;
   this.vy = vy;
   this.c = c;
+  this.boardDist = 0;
+  this.delta = 0;
+  this.button = true;
 
   this.collide = () => {
     if (this.y + this.vy + this.r > elements[1].y + elements[1].h / 2 && elements[1].x - elements[1].w / 2 <= this.x && this.x <= elements[1].x + elements[1].w / 2) {
       this.vy = -this.vy;
+      this.vx += this.delta;
     }
   };
 
@@ -28,17 +43,25 @@ function Ball(x, y, r, vx, vy, c) {
     e.stroke();
   };
 
+  this.start = () => {
+    this.vy = 5;
+  }
+
   this.update = () => {
+    this.boardDist = this.x - elements[1].x;
+    this.delta = (this.boardDist / elements[1].w) - 0.5;
     if (this.x + this.r >= app.width || this.x - this.r <= 0) {
       this.vx = -this.vx;
     }
-    if (this.y + this.r >= app.height || this.y - this.r <= 0) {
+    if (this.y - this.r <= 0) {
       this.vy = -this.vy;
+    }
+    if (this.y + this.r >= app.height + this.r) {
+      this.status = false;
     }
     this.collide();
     this.x += this.vx;
     this.y += this.vy;
-
     this.draw();
   };
 }
@@ -48,6 +71,7 @@ function Board() {
   this.y = app.height * 9 / 10;
   this.w = app.width / 5;
   this.h = app.height / 40;
+  this.status = true;
 
   this.draw = () => {
     e.fillStyle = '#ffffff';
@@ -66,16 +90,29 @@ function Board() {
   };
 }
 
-function Brick(x, y) {
+function Brick(x, y, c) {
   this.x = x;
   this.y = y;
+  this.c = c;
   this.w = app.width / 15;
   this.h = app.height / 25;
+  this.status = true;
 
-  this.collide = () => {};
+  this.collide = () => {
+    if (this.y < elements[0].y + elements[0].r + elements[0].vy && this.y + this.h > elements[0].y - elements[0].r + elements[0].vy && elements[0].x + elements[0].r + elements[0].vx >= this.x && elements[0].x - elements[0].r + elements[0].vx <= this.x + this.w) {
+      elements[0].vy = -elements[0].vy;
+      this.status = false;
+    };
+    if (this.x < elements[0].x + elements[0].vx + elements[0].r && this.x + this.w > elements[0].x + elements[0].vx - elements[0].r && elements[0].y - elements[0].r <= this.y + this.h && this.y <= elements[0].y + elements[0].r) {
+      elements[0].vx = -elements[0].vx;
+      elements[0].vy = -elements[0].vy;
+      this.status = false;
+    };
+
+  }
 
   this.draw = () => {
-    e.fillStyle = '#ffffff';
+    e.fillStyle = this.c;
     e.fillRect(this.x, this.y, this.w, this.h);
   };
 
@@ -88,6 +125,7 @@ function Brick(x, y) {
 function Cursor() {
   this.x = 0;
   this.y = 0;
+  this.status = true;
 
   this.draw = () => {
     h.beginPath();
@@ -103,48 +141,51 @@ function Cursor() {
   };
 }
 
+function dist(x1, x2, y1, y2) {
+  return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+}
+
 function init() {
   app.width = eGet.width = hGet.width = window.innerWidth;
   app.height = eGet.height = hGet.height = window.innerHeight;
+  app.click = 0;
+
+  document.addEventListener('click', event => {
+    if (elements[0].button === true) {
+      elements[0].start();
+      elements[0].button = false;
+    }
+  });
 
   document.addEventListener('mousemove', event => {
     mouse.x = event.clientX;
     mouse.y = event.clientY;
   });
 
-  ball.sign = rand(1, 4);
-  ball.letVx = rand(1, 3);
-  ball.letVy = rand(1, 3);
-  ball.letR = app.height / 50;
-  switch (ball.sign) {
-    case 1:
-      ball.letVx = ball.letVx;
-      ball.letVy = ball.letVy;
-      break;
-    case 2:
-      ball.letVx = -ball.letVx;
-      ball.letVy = ball.letVy;
-      break;
-    case 3:
-      ball.letVx = -ball.letVx;
-      ball.letVy = -ball.letVy;
-      break;
-    case 4:
-      ball.letVx = ball.letVx;
-      ball.letVy = -ball.letVy;
-      break;
-    default:
-      ball.letVx = ball.letVx;
-      ball.letVy = ball.letVy;
-  }
-
-  elements.push(new Ball(rand(ball.letR, app.width - ball.letR), rand(ball.letR, app.height - ball.letR), ball.letR, ball.letVx, ball.letVy, 'rgb(' + rand(100, 255) + ',' + rand(100, 255) + ',' + rand(100, 255) + ')'));
+  elements.push(new Ball(app.width / 2, app.height * 4 / 5, app.height / 50, 0, 0, 'rgb(' + rand(100, 255) + ',' + rand(100, 255) + ',' + rand(100, 255) + ')'));
   elements.push(new Board());
   elements.push(new Cursor());
-  // elements.push(new Brick(app.width / 2, app.height / 2));
+  for (var i = 0; i < 15; i++) {
+    for (var j = 0; j < 10; j++) {
+      switch (matrix[j * 15 + i]) {
+        case 0:
+          elements.push(new Brick(i * app.width / 15, j * app.height / 25 + 40, '#f8f8f8'));
+          break;
+        case 1:
+          elements.push(new Brick(i * app.width / 15, j * app.height / 25 + 40, '#52ff00'));
+          break;
+        default:
+          elements.push(new Brick(i * app.width / 15, j * app.height / 25 + 40, '#f8f8f8'));
+      }
+    }
+  }
 
-  update();
+  setTimeout(update, 20);
 };
+
+function pyth(hyp, sid) {
+  return Math.sqrt(Math.pow(hyp, 2) - Math.pow(sid, 2));
+}
 
 function rand(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min);
@@ -155,6 +196,9 @@ function update() {
   e.clearRect(0, 0, app.width, app.height);
   h.clearRect(0, 0, app.width, app.height);
   for (var i = 0; i < elements.length; i++) {
+    if (elements[i].status === false) {
+      elements.splice(i, 1);
+    }
     elements[i].update();
   }
 }
